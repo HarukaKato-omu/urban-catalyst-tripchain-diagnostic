@@ -1,0 +1,13 @@
+# Data are never committed (schema.csv is the only tracked file in data/)
+data/*
+!data/schema.csv
+
+# Generated outputs
+output/
+report/
+*.rds
+
+# R session files
+.Rhistory
+.RData
+.Rproj.user/
