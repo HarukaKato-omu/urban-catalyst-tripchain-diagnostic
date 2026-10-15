@@ -1,173 +1,197 @@
-# Urban catalyst or enclave? A sequence-based diagnostic of public-facility connectivity using GPS trip chains and ego networks
+# Urban catalyst or enclave? A GPS trip-chain diagnostic of public-facility connectivity in a Japanese suburban city center
 
 Replication code for:
 
-> Kato, H. (2026). Urban catalyst or enclave? A sequence-based diagnostic of
-> public-facility connectivity using GPS trip chains and ego networks.
+> Kato, H. (2026). Urban catalyst or enclave? A GPS trip-chain diagnostic of
+> public-facility connectivity in a Japanese suburban city center.
 > *Manuscript under review.*
 
-This repository contains the R pipeline used to evaluate whether ONIKURU, a
-public multifunctional facility opened in November 2023 in the suburban city
-center of Ibaraki City (Osaka Metropolitan Area), operated as a connective or
-generative urban catalyst or as a behavioral enclave. From consent-based
-smartphone GPS stay points for Ibaraki City residents (190,323 stay points,
-7,390 users, October 2023–February 2024), the pipeline reconstructs daily trip
-chains and directed stay-transition networks before and after the opening and
-reproduces every model-based quantity in the article: area-level centrality
-and facility-level ego-network decomposition (H1), bidirectional
-transition-share tests (H2), the logistic model of generative uptake (H3),
-within-person fixed-effect comparisons and ordered secondary stays (H4),
-chain-type classification and the 17-anchor benchmark (H5), the person-day
-permutation test, and the four-specification sensitivity analysis.
+The R pipeline in this repository evaluates whether ONIKURU, a public
+multifunctional facility opened in November 2023 in the suburban city center of
+Ibaraki City (Osaka Metropolitan Area), operated as a connective or generative
+urban catalyst or as a behavioral enclave. From consent-based smartphone GPS
+stay points of city residents (October 2023–February 2024) it reconstructs
+daily trip chains and directed stay-transition networks before and after the
+opening and produces every model-based quantity in the article: area-level
+centrality and the facility-level ego-network decomposition (H1), bidirectional
+transition-share tests with user-level bootstrap intervals (H2), the logistic
+model of generative uptake with and without a distance term (H3),
+within-person fixed-effect comparisons against two reference values and the
+anchor-wise gradient (H4), chain-type classification and the multi-anchor and
+town-block benchmarks with the reading rule (H5), the person-day permutation
+test, the difference-in-differences and phase-split checks, and the figures.
 
 ## Repository structure
 
 ```
-├── onikuru_tripchain_pipeline.R   # Full analysis pipeline (v1.0.0)
+├── onikuru_tripchain_pipeline.R   # Analysis pipeline (v2.0.0): one stay-point specification per run
+├── make_synthetic_inputs.R        # Schema-compatible synthetic inputs for an end-to-end test
+├── convert_xlsx_to_csv.R          # Optional: stream a large stay-point .xlsx (ArcGIS export) to CSV
+├── make_figure4_layers.R          # Optional: GIS layer tables for Figure 4 from the pipeline output
 ├── data/
-│   └── schema.csv                 # Column definitions of the stay-point files (no raw data)
-├── .gitignore                     # Prevents accidental data/output commits
+│   └── schema.csv                 # Column definitions of the three input files (no data)
+├── .gitignore                     # Keeps data and outputs out of the repository
 ├── CITATION.cff
 ├── LICENSE
 └── README.md
 ```
 
-Running the pipeline creates `output/` (tables as CSV) and `report/`
-(figures as PDF + PNG, plus the Figure 4 edge export). These are not tracked
-in the repository.
+Running the pipeline creates `output/<spec>/` (intermediate results, article
+tables and figures). Outputs and data are not tracked.
 
 ## Data availability
 
-The stay-point files (`data/staypoints_<spec>.csv`) and the raw GPS records
-from which they are derived are **not** redistributed. The GPS trajectory data
-are licensed from Geo-Technologies Inc. under a data-use agreement that does
-not permit redistribution and contain personal location information collected
-from consenting smartphone users; access requires a formal application to the
-provider (see the Data availability statement of the article).
-`data/schema.csv` documents every column of the stay-point files (name, type,
-unit, definition, source, and access conditions) so that researchers who
-obtain an equivalent extract can run the pipeline without modification.
+The input files (`data/staypoints_<spec>.csv`, `data/facility_staypoints_<spec>.csv`,
+`data/residence.csv`) and the raw GPS records from which they are derived are
+**not** redistributed. The GPS trajectory data are licensed from a commercial
+provider under a data-use agreement that does not permit redistribution and
+contain personal location information collected from consenting smartphone
+users; access requires a formal application to the provider (see the Data
+availability statement of the article). `data/schema.csv` documents every
+column of the three files (name, type, unit, definition, source and access
+conditions) so that researchers who obtain an equivalent extract can run the
+pipeline without modification.
 
-The upstream step that turns raw GPS fixes into stay points is not part of
-this repository. As described in Section 3.2.2 of the article, fixes with
-horizontal accuracy ≥ 50 m were dropped, stay episodes were detected with
-`scikit-mobility` (`stay_locations()`, spatial radius 150 or 200 m, minimum
-duration 15 or 20 min), and each stay centroid was assigned to its town-block
-(chō/chōme) polygon from the public e-Stat small-area boundary data and tested
-against the ONIKURU building footprint.
+The upstream step that turns raw GPS fixes into stay points is not part of this
+repository. As described in Section 3 of the article, fixes with horizontal
+accuracy ≥ 50 m were dropped, stay episodes were detected with `scikit-mobility`
+(`stay_locations()`; spatial radius 150 m and minimum duration 15 min in the
+primary specification), each stay centroid was assigned to its town-block
+(chō/chōme) polygon from the public e-Stat small-area boundary data, and the
+stays whose centroid falls inside the facility building footprint were
+extracted to the facility stay-point file.
 
-`make_synthetic_example()` writes schema-compatible synthetic stay-point files
-(`data/synthetic_<spec>.csv`, 400 simulated users) so that the pipeline can be
-executed end-to-end and its outputs inspected without the licensed data. The
-synthetic values bear no relation to the published results.
+`make_synthetic_inputs.R` writes schema-compatible synthetic versions of the
+three files (600 simulated users) so that the pipeline can be executed
+end-to-end and its outputs inspected without the licensed data. The synthetic
+values bear no relation to the published results.
 
 ## Requirements
 
-- R ≥ 4.3 (syntax verified on R 4.3.3)
-- Required packages: `data.table`, `lubridate`, `igraph`, `ggplot2`
-- Optional packages: `fixest` (fixed-effect regressions; without it the
-  pipeline falls back to `lm()` with `sandwich::vcovCL` cluster-robust
-  standard errors, which requires `sandwich`), `patchwork` (multi-panel
-  figures), `mgcv` (spline check of the H3 dose-response, not reported as a
-  table)
+- R ≥ 4.3
+- Packages: `data.table`, `lubridate`, `igraph`, `fixest`, `TraMineR`,
+  `ggplot2`, `patchwork`; `readxl` only if an input file is supplied as
+  `.xlsx`. Missing packages are installed from CRAN when the script is sourced.
 
 ```r
-install.packages(c("data.table", "lubridate", "igraph", "ggplot2",
-                   "fixest", "patchwork", "mgcv", "sandwich"))
+install.packages(c("data.table", "lubridate", "igraph", "fixest", "TraMineR",
+                   "ggplot2", "patchwork"))
 ```
 
 ## How to run
 
-1. Obtain an equivalent GPS extract, detect stay points as described above,
-   arrange the result as documented in `data/schema.csv`, and save it as
-   `data/staypoints_150m15min.csv` (primary specification). The three
-   sensitivity files (`150m20min`, `200m15min`, `200m20min`) are optional;
-   Table 7 is built from whichever files are present.
-2. `source("onikuru_tripchain_pipeline.R", encoding = "UTF-8")` — loads the
-   configuration and helpers, then prints the checkpoint status.
-3. `run_all(force = TRUE)` — full pipeline (cluster bootstrap B = 500,
-   permutations B = 1,000). `run_all(force = FALSE)` skips steps whose outputs
-   already exist, so an interrupted run can be resumed.
+1. Obtain an equivalent GPS extract, detect stay points as described above, and
+   arrange the result as documented in `data/schema.csv`:
+   `data/staypoints_150m15min.csv`, `data/facility_staypoints_150m15min.csv`
+   and `data/residence.csv` (CSV preferred; `.xlsx` is accepted for small
+   files, and `convert_xlsx_to_csv.R` streams a large ArcGIS `.xlsx` export to
+   CSV).
+2. Set the working directory to the repository root and run
 
-End-to-end test on synthetic data (does **not** reproduce the published
-values):
+   ```r
+   source("onikuru_tripchain_pipeline.R", encoding = "UTF-8")
+   ```
+
+   The script runs from top to bottom for the specification set in `CFG`
+   (`spec`, `stay_file`, `facility_file`, `out_dir`; the default is the
+   150 m / 15 min primary specification) and writes to `output/150m15min/`.
+
+3. To run another stay-point specification, either edit `CFG` or define
+   `CFG_OVERRIDE` before sourcing; every element of `CFG` can be overridden
+   this way:
+
+   ```r
+   CFG_OVERRIDE <- list(spec = "200m20min",
+                        stay_file = "staypoints_200m20min",
+                        facility_file = "facility_staypoints_200m20min",
+                        out_dir = "output/200m20min")
+   source("onikuru_tripchain_pipeline.R", encoding = "UTF-8")
+   ```
+
+   Each run writes its own column of the sensitivity table
+   (`tables/TableS4.csv`); Table S4 of the article places the columns of the
+   four specifications (150 m / 15 min, 150 m / 20 min, 200 m / 15 min,
+   200 m / 20 min) side by side.
+
+End-to-end test on synthetic data (does **not** reproduce the published values):
 
 ```r
+source("make_synthetic_inputs.R", encoding = "UTF-8")
+make_synthetic_inputs()                        # writes the three files to data/
 source("onikuru_tripchain_pipeline.R", encoding = "UTF-8")
-make_synthetic_example()                       # writes data/synthetic_<spec>.csv
-options(ONIKURU_SYNTHETIC = TRUE, ONIKURU_B_BOOT = 100, ONIKURU_B_PERM = 100)
-run_all(force = TRUE)
 ```
 
-Approximate runtime: about 10–20 minutes for the full run on a standard
-laptop with the article's extract; the permutation test and the
-four-specification sensitivity loop dominate. The synthetic test runs in
-under a minute.
+The synthetic test runs in about a minute. A run on the article's extract takes
+considerably longer; the sequence analysis (Step 15), the permutation test
+(Step 13) and the bootstraps dominate. `CFG$run_sequence_analysis = FALSE`
+skips Step 15, which is not used by any article table.
 
 ## Output ↔ article mapping
 
+All article elements are written to `output/<spec>/tables/` and
+`output/<spec>/figs/`; the numbers quoted in table notes and in the text are
+collected in `tables/TableNotes.csv` with the place where each is used.
+
 | Output | Article element |
 | --- | --- |
-| `output/table1_sample_characteristics.csv` | Table 1 |
-| `output/table2_centrality_decomposition.csv` | Table 2 |
-| `output/table3_h2_bidirectional_main.csv` (aggregate and the two station cores) | Table 3 |
-| `output/tableS1_h2_bidirectional_all_blocks.csv` | Table S1 |
-| `output/table4_h3_logistic.csv`, `output/s4_h3_predicted_probabilities.csv` | Table 4 and its note |
-| `output/table5_within_person_means.csv`, `output/table5_within_person_fe.csv` | Table 5 |
-| `output/s5_h4_secondary_stay_bootstrap.csv` | Section 4.4 (ordered secondary stays) |
-| `output/table6_chain_types.csv` | Table 6 |
-| `output/tableS2_multi_anchor.csv` | Table S2 |
-| `output/s7_network_permutation_test.csv` | Section 4.2 (system-level inference) |
-| `output/table7_sensitivity.csv` | Table 7 |
-| `report/figure5_ego_networks` | Figure 5 |
-| `report/figure6_h2_dumbbell` | Figure 6 |
-| `report/figure7_within_person` | Figure 7 |
-| `report/figure8_multi_anchor` | Figure 8 |
-| `report/figureS1_permutation_null` | Supplementary figure |
-| `report/figure4_transition_edges.csv`, `report/figure4_zone_centroids.csv` | Figure 4 (drawn in GIS from this export) |
+| `tables/Table1.csv` | Table 1 (sample characteristics) |
+| `tables/Table2.csv` | Table 2 (H1: centrality and ego-network decomposition) |
+| `tables/Table3.csv` | Table 3 (H4: within-person comparison) |
+| `tables/TableS1.csv` | Table S1 (H2: bidirectional transition shares by town-block) |
+| `tables/TableS2.csv` | Table S2 (H3: logistic model of uptake, with and without distance) |
+| `tables/TableS3.csv` | Table S3 (H5: multi-anchor benchmark) |
+| `tables/TableS4.csv` | Table S4 (this specification's column, home stays excluded, post-opening phases) |
+| `tables/TableS5.csv` | Table S5 (difference-in-differences) |
+| `tables/TableS6.csv` | Table S6 (town-block-level benchmark, pre and post) |
+| `tables/TableNotes.csv` | Numbers in table notes and in Sections 4.1–4.5 |
+| `figs/Figure4_nodes.csv`, `figs/Figure4_edges.csv` | Figure 4 (drawn in GIS from this export; `Figure4_reference` is a check plot, and `make_figure4_layers.R` prepares the GIS layers) |
+| `figs/Figure5` | Figure 5 (ego networks) |
+| `figs/Figure6` | Figure 6 (H2 dumbbell plot) |
+| `figs/Figure7` | Figure 7 (H4 within-person contrast and ordered secondary stays) |
+| `figs/Figure8` | Figure 8 (multi-anchor benchmark) |
+| `figs/FigureS2` | Figure S2 (event study) |
+| `figs/figure_map.csv` | Article figure → file map |
 
-Figures 1–3 (facility photograph, study area, analytical framework) are not
-produced by the pipeline. Tables 3 and S1 report BH-adjusted Fisher p-values
-as screening statistics; the person-day permutation test is the system-level
-inference (Section 3.3.2).
+Figures 1–3 and S1 (facility photographs, study area, analytical framework)
+are not produced by the pipeline. Town-block Fisher p-values in Table S1 are
+screening statistics on non-independent transitions; the user-level cluster
+bootstraps and the person-day permutation test provide the inferential
+statements (Section 3 of the article).
+
+The intermediate results of every step are also written as `S*.csv`
+(unrounded), and `pipeline_results.rds` holds the main R objects of the run.
+`CFG$write_diagnostics = TRUE` additionally writes the internal diagnostic
+tables and figures to `output/<spec>/diagnostics/`.
 
 ## Reproducibility notes
 
-- The pipeline merges the two internal scripts that produced the manuscript
-  results (the trip-chain pipeline and the H3 logistic-regression script);
-  H3 uses the same person-day frame as H4 and H5. Two exploratory steps not
-  reported in the article (optimal-matching sequence clustering and a
-  top-edge stability bootstrap) were removed. No estimation logic was changed.
-- Every stochastic step (cluster bootstrap, permutation test, synthetic
-  example) is seeded deterministically from its label (`seed_for()`), so any
-  step can be re-run in isolation and results do not depend on execution
-  order.
-- The ordered secondary-stay windows (≤ 2 h, ≤ 4 h) are measured from the
-  departure time of the ONIKURU stay; the same-day rate has no window.
+- One run covers one stay-point specification; the sensitivity analysis is
+  four runs with different `CFG` settings, not a loop inside the script.
+- Every stochastic step (user-level cluster bootstraps, rank bootstrap,
+  permutation test, synthetic inputs) is seeded, so results do not depend on
+  the execution order.
 - Fixed-effect estimates use `fixest::feols` with user-clustered standard
-  errors when `fixest` is installed; the `lm()` fallback yields the same point
-  estimates with CR1 cluster-robust standard errors, which may differ from
-  the `fixest` defaults at the third decimal.
-- Zone names are Japanese (UTF-8). Source the pipeline with
-  `encoding = "UTF-8"` on non-UTF-8 locales; all constants are normalized with
-  `enc2utf8()`.
-- `output/sessionInfo.txt` records the exact R and package versions of each
-  run.
+  errors.
+- The ordered secondary-stay windows (≤ 2 h, ≤ 4 h) are measured from the
+  departure time of the facility stay; the same-day rate has no window.
+- Zone names are Japanese (UTF-8) and are mapped to the romanized labels of the
+  article by the `ROMA` table in the script; zones without a label are listed
+  in `tables/unmapped_names.csv`. Source the scripts with `encoding = "UTF-8"`
+  on non-UTF-8 locales.
+- The study constants (observation window, opening date, central town-blocks,
+  station cores, facility labels) are set in `CFG` at the top of the script.
 
 ## Citation
 
-If you use this code, please cite the paper above and the archived version of
-this repository:
-
-> [Zenodo version DOI — inserted after the first GitHub release]
+If you use this code, please cite the article above and the archived version of
+this repository (`CITATION.cff`).
 
 ## License
 
 MIT — see `LICENSE`. The license applies to the code only and does not extend
-to the GPS data, which remain subject to the data-use agreement with
-Geo-Technologies Inc.
+to the GPS data, which remain subject to the data-use agreement with the
+provider.
 
 ## Contact
 
-Haruka Kato, Associate Professor, Osaka Metropolitan University
-[institutional email or researchmap URL]
+Haruka Kato, Osaka Metropolitan University

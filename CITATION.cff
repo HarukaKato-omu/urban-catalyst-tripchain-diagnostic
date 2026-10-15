@@ -1,14 +1,14 @@
 cff-version: 1.2.0
 message: "If you use this code, please cite it as below."
-title: "Urban catalyst or enclave? A sequence-based diagnostic of public-facility connectivity using GPS trip chains and ego networks: replication code"
+title: "Urban catalyst or enclave? A GPS trip-chain diagnostic of public-facility connectivity in a Japanese suburban city center: replication code"
 type: software
 authors:
   - family-names: "Kato"
     given-names: "Haruka"
     affiliation: "Osaka Metropolitan University"
     orcid: "https://orcid.org/0000-0003-0831-1543"
-version: "1.0.0"
-date-released: "2026-09-25"
+version: "2.0.0"
+date-released: "2026-10-15"
 license: MIT
-repository-code: "https://github.com/HarukaKato-omu/onikuru-tripchain-diagnostic"
-doi: "[Zenodo concept DOI - add after the first release]"
+repository-code: "https://github.com/HarukaKato-omu/urban-catalyst-tripchain-diagnostic"
+doi: "[Zenodo concept DOI - add after the release]"
